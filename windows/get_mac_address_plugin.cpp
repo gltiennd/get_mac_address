@@ -104,4 +104,76 @@ char* GetMacAddressPlugin::getMAC() const {
 
 
 
+// char* GetMacAddressPlugin::getMAC() const {
+//     DWORD dwBufLen = sizeof(IP_ADAPTER_INFO);
+//     char* mac_addr = nullptr;
+//     auto AdapterInfo = static_cast<IP_ADAPTER_INFO*>(malloc(dwBufLen));
+
+//     if (AdapterInfo == nullptr) {
+//         std::cerr << "Error allocating memory needed to call GetAdaptersinfo" << std::endl;
+//         return nullptr;
+//     }
+
+//     // Make an initial call to GetAdaptersInfo to get the necessary size into the dwBufLen variable
+//     if (GetAdaptersInfo(AdapterInfo, &dwBufLen) == ERROR_BUFFER_OVERFLOW) {
+//         free(AdapterInfo);
+//         AdapterInfo = static_cast<IP_ADAPTER_INFO*>(malloc(dwBufLen));
+
+//         if (AdapterInfo == nullptr) {
+//             std::cerr << "Error allocating memory needed to call GetAdaptersinfo" << std::endl;
+//             return nullptr;
+//         }
+//     }
+
+//     if (GetAdaptersInfo(AdapterInfo, &dwBufLen) == NO_ERROR) {
+//         // Contains pointer to current adapter info
+//         PIP_ADAPTER_INFO pAdapterInfo = AdapterInfo;
+
+//         // Create a set to store unique MAC addresses
+//         std::set<std::string> uniqueMacAddresses;
+
+//         do {
+//             char temp_mac_addr[18];
+//             // Technically should look at pAdapterInfo->AddressLength
+//             //   and not assume it is 6.
+//             sprintf_s(temp_mac_addr, sizeof(temp_mac_addr), "%02X:%02X:%02X:%02X:%02X:%02X",
+//                 pAdapterInfo->Address[0], pAdapterInfo->Address[1],
+//                 pAdapterInfo->Address[2], pAdapterInfo->Address[3],
+//                 pAdapterInfo->Address[4], pAdapterInfo->Address[5]);
+
+//             // Insert the MAC address into the set
+//             uniqueMacAddresses.insert(temp_mac_addr);
+
+//             printf("Address: %s, mac: %s\n", pAdapterInfo->IpAddressList.IpAddress.String, temp_mac_addr);
+
+//             pAdapterInfo = pAdapterInfo->Next;
+//         } while (pAdapterInfo);
+
+//         // Create a dynamic string to store the unique MAC addresses
+//         std::string macAddresses;
+//         for (const auto& uniqueMac : uniqueMacAddresses) {
+//             macAddresses += uniqueMac;
+//             macAddresses += ";";
+//         }
+
+//         // Remove the trailing semicolon
+//         if (!macAddresses.empty()) {
+//             macAddresses.pop_back();
+//         }
+
+//         // Allocate memory for the final string
+//         mac_addr = static_cast<char*>(malloc(macAddresses.length() + 1));
+//         if (mac_addr != nullptr) {
+//             // Copy the string to the allocated memory using strcpy_s
+//             strcpy_s(mac_addr, macAddresses.length() + 1, macAddresses.c_str());
+//         }
+//     }
+
+//     // Free the allocated memory
+//     free(AdapterInfo);
+
+//     return mac_addr; // Caller must free.
+// }
+
+
 }  // namespace get_mac_address
