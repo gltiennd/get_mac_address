@@ -75,16 +75,20 @@ public class GetMacAddressPlugin: NSObject, FlutterPlugin {
 
 
   func getMacAddress() -> String? {
-      var macAddressAsString : String?
+    var macAddresses: [String] = []
+
       if let intfIterator = FindEthernetInterfaces() {
           if let macAddress = GetMACAddress(intfIterator) {
-              macAddressAsString = macAddress.map( { String(format:"%02x", $0) } ).joined(separator: ":")
+             let macAddressString =  macAddressAsString = macAddress.map( { String(format:"%02x", $0) } ).joined(separator: ":")
               print(macAddressAsString!)
+
+                    print(macAddressString)
+            macAddresses.append(macAddressString)
           }
 
           IOObjectRelease(intfIterator)
       }
-      return macAddressAsString
+  return macAddresses.joined(separator: ";")
   }
 
 
