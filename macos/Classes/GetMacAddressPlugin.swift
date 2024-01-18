@@ -2,90 +2,80 @@ import Cocoa
 import FlutterMacOS
 
 public class GetMacAddressPlugin: NSObject, FlutterPlugin {
-  public static func register(with registrar: FlutterPluginRegistrar) {
-    let channel = FlutterMethodChannel(name: "get_mac_address", binaryMessenger: registrar.messenger)
-    let instance = GetMacAddressPlugin()
-    registrar.addMethodCallDelegate(instance, channel: channel)
-  }
-
-  public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    switch call.method {
-    case "getMacAddress":
-    guard let macAddress = getMacAddress() else {
-        result(FlutterError.init(code: "load failure", message: "macOS mac address load failure",details: nil))
-        return
+    public static func register(with registrar: FlutterPluginRegistrar) {
+        let channel = FlutterMethodChannel(name: "get_mac_address", binaryMessenger: registrar.messenger)
+        let instance = GetMacAddressPlugin()
+        registrar.addMethodCallDelegate(instance, channel: channel)
     }
-    result(macAddress)
-    default:
-      result(FlutterMethodNotImplemented)
+
+    public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        switch call.method {
+        case "getMacAddresses":
+            guard let macAddresses = getMacAddresses() else {
+                result(FlutterError.init(code: "load failure", message: "macOS mac addresses load failure", details: nil))
+                return
+            }
+            result(macAddresses)
+        default:
+            result(FlutterMethodNotImplemented)
+        }
     }
-  }
 
+    func FindEthernetInterfaces() -> [io_iterator_t]? {
+        var matchingServices: [io_iterator_t] = []
+        let matchingDictUM = IOServiceMatching("IOEthernetInterface")
 
-  func FindEthernetInterfaces() -> io_iterator_t? {
+        if matchingDictUM == nil {
+            return nil
+        }
 
-      let matchingDictUM = IOServiceMatching("IOEthernetInterface");
-      // Note that another option here would be:
-      // matchingDict = IOBSDMatching("en0");
-      // but en0: isn't necessarily the primary interface, especially on systems with multiple Ethernet ports.
+        let matchingDict = matchingDictUM! as NSMutableDictionary
+        matchingDict["IOPropertyMatch"] = ["IOPrimaryInterface": true]
 
-      if matchingDictUM == nil {
-          return nil
-      }
+        var matchingService: io_iterator_t = 0
+        while IOServiceGetMatchingServices(kIOMasterPortDefault, matchingDict, &matchingService) == KERN_SUCCESS {
+            matchingServices.append(matchingService)
+            matchingService = 0
+        }
 
-      let matchingDict = matchingDictUM! as NSMutableDictionary
-      matchingDict["IOPropertyMatch"] = [ "IOPrimaryInterface" : true]
+        return matchingServices.isEmpty ? nil : matchingServices
+    }
 
-      var matchingServices : io_iterator_t = 0
-      if IOServiceGetMatchingServices(kIOMasterPortDefault, matchingDict, &matchingServices) != KERN_SUCCESS {
-          return nil
-      }
+    func GetMACAddresses(_ intfIterators: [io_iterator_t]) -> [String] {
+        var macAddresses: [String] = []
 
-      return matchingServices
-  }
+        for intfIterator in intfIterators {
+            var intfService = IOIteratorNext(intfIterator)
+            while intfService != 0 {
+                var controllerService: io_object_t = 0
+                if IORegistryEntryGetParentEntry(intfService, kIOServicePlane, &controllerService) == KERN_SUCCESS {
+                    let dataUM = IORegistryEntryCreateCFProperty(controllerService, "IOMACAddress" as CFString, kCFAllocatorDefault, 0)
+                    if dataUM != nil {
+                        let data = (dataUM!.takeRetainedValue() as! CFData) as Data
+                        let macAddress = data.map { String(format: "%02x", $0) }.joined(separator: ":")
+                        macAddresses.append(macAddress)
+                        print("Address: \(macAddress)")
+                    }
+                    IOObjectRelease(controllerService)
+                }
+                IOObjectRelease(intfService)
+                intfService = IOIteratorNext(intfIterator)
+            }
+        }
 
-  // Given an iterator across a set of Ethernet interfaces, return the MAC address of the last one.
-  // If no interfaces are found the MAC address is set to an empty string.
-  // In this sample the iterator should contain just the primary interface.
-  func GetMACAddress(_ intfIterator : io_iterator_t) -> [UInt8]? {
+        return macAddresses
+    }
 
-      var macAddress : [UInt8]?
+    func getMacAddresses() -> String? {
+        var macAddresses: [String] = []
 
-      var intfService = IOIteratorNext(intfIterator)
-      while intfService != 0 {
+        if let intfIterators = FindEthernetInterfaces() {
+            macAddresses = GetMACAddresses(intfIterators)
+            for intfIterator in intfIterators {
+                IOObjectRelease(intfIterator)
+            }
+        }
 
-          var controllerService : io_object_t = 0
-          if IORegistryEntryGetParentEntry(intfService, kIOServicePlane, &controllerService) == KERN_SUCCESS {
-
-              let dataUM = IORegistryEntryCreateCFProperty(controllerService, "IOMACAddress" as CFString, kCFAllocatorDefault, 0)
-              if dataUM != nil {
-                  let data = (dataUM!.takeRetainedValue() as! CFData) as Data
-                  macAddress = [0, 0, 0, 0, 0, 0]
-                  data.copyBytes(to: &macAddress!, count: macAddress!.count)
-              }
-              IOObjectRelease(controllerService)
-          }
-
-          IOObjectRelease(intfService)
-          intfService = IOIteratorNext(intfIterator)
-      }
-
-      return macAddress
-  }
-
-
-  func getMacAddress() -> String? {
-      var macAddressAsString : String?
-      if let intfIterator = FindEthernetInterfaces() {
-          if let macAddress = GetMACAddress(intfIterator) {
-              macAddressAsString = macAddress.map( { String(format:"%02x", $0) } ).joined(separator: ":")
-              print(macAddressAsString!)
-          }
-
-          IOObjectRelease(intfIterator)
-      }
-      return macAddressAsString
-  }
-
-
+        return macAddresses.isEmpty ? nil : macAddresses.joined(separator: ";")
+    }
 }
