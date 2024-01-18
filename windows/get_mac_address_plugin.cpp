@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <iptypes.h>
 #include <iphlpapi.h>
-#include <iomanip> 
+
 // For getPlatformVersion; remove unless needed for your plugin implementation.
 #include <VersionHelpers.h>
 
@@ -63,7 +63,7 @@ char* GetMacAddressPlugin::getMAC() const {
     auto AdapterInfo = static_cast<IP_ADAPTER_INFO*>(malloc(dwBufLen));
 
     if (AdapterInfo == nullptr) {
-        perror("Error allocating memory needed to call GetAdaptersinfo");
+        std::cerr << "Error allocating memory needed to call GetAdaptersinfo" << std::endl;
         return nullptr;
     }
 
@@ -73,7 +73,7 @@ char* GetMacAddressPlugin::getMAC() const {
         AdapterInfo = static_cast<IP_ADAPTER_INFO*>(malloc(dwBufLen));
 
         if (AdapterInfo == nullptr) {
-            perror("Error allocating memory needed to call GetAdaptersinfo");
+            std::cerr << "Error allocating memory needed to call GetAdaptersinfo" << std::endl;
             return nullptr;
         }
     }
@@ -86,21 +86,18 @@ char* GetMacAddressPlugin::getMAC() const {
         std::set<std::string> uniqueMacAddresses;
 
         do {
-            if (pAdapterInfo->Type == MIB_IF_TYPE_ETHERNET) {
-                std::ostringstream macAddressStream;
-                macAddressStream << std::hex << std::uppercase
-                                 << std::setw(2) << std::setfill('0') << static_cast<int>(pAdapterInfo->Address[0]) << ":"
-                                 << std::setw(2) << std::setfill('0') << static_cast<int>(pAdapterInfo->Address[1]) << ":"
-                                 << std::setw(2) << std::setfill('0') << static_cast<int>(pAdapterInfo->Address[2]) << ":"
-                                 << std::setw(2) << std::setfill('0') << static_cast<int>(pAdapterInfo->Address[3]) << ":"
-                                 << std::setw(2) << std::setfill('0') << static_cast<int>(pAdapterInfo->Address[4]) << ":"
-                                 << std::setw(2) << std::setfill('0') << static_cast<int>(pAdapterInfo->Address[5]);
+            char temp_mac_addr[18];
+            // Technically should look at pAdapterInfo->AddressLength
+            //   and not assume it is 6.
+            sprintf_s(temp_mac_addr, sizeof(temp_mac_addr), "%02X:%02X:%02X:%02X:%02X:%02X",
+                pAdapterInfo->Address[0], pAdapterInfo->Address[1],
+                pAdapterInfo->Address[2], pAdapterInfo->Address[3],
+                pAdapterInfo->Address[4], pAdapterInfo->Address[5]);
 
-                // Insert the MAC address into the set
-                uniqueMacAddresses.insert(macAddressStream.str());
+            // Insert the MAC address into the set
+            uniqueMacAddresses.insert(temp_mac_addr);
 
-                printf("Address: %s, mac: %s\n", pAdapterInfo->IpAddressList.IpAddress.String, macAddressStream.str().c_str());
-            }
+            printf("Address: %s, mac: %s\n", pAdapterInfo->IpAddressList.IpAddress.String, temp_mac_addr);
 
             pAdapterInfo = pAdapterInfo->Next;
         } while (pAdapterInfo);
@@ -118,25 +115,15 @@ char* GetMacAddressPlugin::getMAC() const {
         }
 
         // Allocate memory for the final string
-        free(mac_addr);  // Free previous memory, if any
         mac_addr = static_cast<char*>(malloc(macAddresses.length() + 1));
         if (mac_addr != nullptr) {
             // Copy the string to the allocated memory using strcpy_s
             strcpy_s(mac_addr, macAddresses.length() + 1, macAddresses.c_str());
-        } else {
-            perror("Error allocating memory for the final string");
         }
-    } else {
-        perror("Error calling GetAdaptersInfo");
     }
 
     // Free the allocated memory
     free(AdapterInfo);
-
-    if (mac_addr == nullptr) {
-        // No MAC address found, print a message or handle as needed
-        std::cerr << "No MAC address found." << std::endl;
-    }
 
     return mac_addr; // Caller must free.
 }
