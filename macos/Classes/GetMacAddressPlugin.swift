@@ -88,7 +88,7 @@ public class GetMacAddressPlugin: NSObject, FlutterPlugin {
 
           IOObjectRelease(intfIterator)
       }
-  return macAddresses.joined(separator: ";")
+  return "abhsdgasdhaghsdagsh"
   }
 
 
