@@ -47,46 +47,44 @@ public class GetMacAddressPlugin: NSObject, FlutterPlugin {
   // Given an iterator across a set of Ethernet interfaces, return the MAC address of the last one.
   // If no interfaces are found the MAC address is set to an empty string.
   // In this sample the iterator should contain just the primary interface.
-  func GetMACAddress(_ intfIterator : io_iterator_t) -> [UInt8]? {
-
-      var macAddress : [UInt8]?
-
-      var intfService = IOIteratorNext(intfIterator)
-      while intfService != 0 {
-
-          var controllerService : io_object_t = 0
-          if IORegistryEntryGetParentEntry(intfService, kIOServicePlane, &controllerService) == KERN_SUCCESS {
-
-              let dataUM = IORegistryEntryCreateCFProperty(controllerService, "IOMACAddress" as CFString, kCFAllocatorDefault, 0)
-              if dataUM != nil {
-                  let data = (dataUM!.takeRetainedValue() as! CFData) as Data
-                  macAddress = [0, 0, 0, 0, 0, 0]
-                  data.copyBytes(to: &macAddress!, count: macAddress!.count)
-              }
-              IOObjectRelease(controllerService)
-          }
-
-          IOObjectRelease(intfService)
-          intfService = IOIteratorNext(intfIterator)
-      }
-
-      return macAddress
-  }
-
-
-  func getMacAddress() -> String? {
+ func GetMACAddresses(_ intfIterator: io_iterator_t) -> String {
     var macAddresses: [String] = []
 
-      if let intfIterator = FindEthernetInterfaces() {
-          if let macAddress = GetMACAddress(intfIterator) {
-             let macAddressString = macAddress.map( { String(format:"%02x", $0) } ).joined(separator: ":")
-            macAddresses.append(macAddressString)
-          }
+    var intfService = IOIteratorNext(intfIterator)
+    while intfService != 0 {
+        var controllerService: io_object_t = 0
+        if IORegistryEntryGetParentEntry(intfService, kIOServicePlane, &controllerService) == KERN_SUCCESS {
+            let dataUM = IORegistryEntryCreateCFProperty(controllerService, "IOMACAddress" as CFString, kCFAllocatorDefault, 0)
+            
+            if let data = dataUM?.takeRetainedValue() as? CFData {
+                var macAddress = [UInt8](repeating: 0, count: 6)
+                data.copyBytes(to: &macAddress, count: macAddress.count)
 
-          IOObjectRelease(intfIterator)
-      }
-  return macAddresses.joined(separator: ";")
-  }
+                let macAddressString = macAddress.map { String(format: "%02x", $0) }.joined(separator: ":")
+                macAddresses.append(macAddressString)
+            }
 
+            IOObjectRelease(controllerService)
+        }
+
+        IOObjectRelease(intfService)
+        intfService = IOIteratorNext(intfIterator)
+    }
+
+    return macAddresses.joined(separator: ";")
+}
+
+
+
+func getMacAddresses() -> String {
+    var macAddressesString: String = ""
+
+    if let intfIterator = FindEthernetInterfaces() {
+        macAddressesString = GetMACAddresses(intfIterator)
+        IOObjectRelease(intfIterator)
+    }
+
+    return macAddressesString
+}
 
 }
