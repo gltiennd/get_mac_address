@@ -47,7 +47,7 @@ public class GetMacAddressPlugin: NSObject, FlutterPlugin {
   // Given an iterator across a set of Ethernet interfaces, return the MAC address of the last one.
   // If no interfaces are found the MAC address is set to an empty string.
   // In this sample the iterator should contain just the primary interface.
- func GetMACAddresses(_ intfIterator: io_iterator_t) -> String {
+func GetMACAddresses(_ intfIterator: io_iterator_t) -> String {
     var macAddresses: [String] = []
 
     var intfService = IOIteratorNext(intfIterator)
@@ -56,7 +56,7 @@ public class GetMacAddressPlugin: NSObject, FlutterPlugin {
         if IORegistryEntryGetParentEntry(intfService, kIOServicePlane, &controllerService) == KERN_SUCCESS {
             let dataUM = IORegistryEntryCreateCFProperty(controllerService, "IOMACAddress" as CFString, kCFAllocatorDefault, 0)
             
-            if let data = dataUM?.takeRetainedValue() as? CFData {
+            if let data = dataUM?.takeRetainedValue() as CFData? {
                 var macAddress = [UInt8](repeating: 0, count: 6)
                 data.copyBytes(to: &macAddress, count: macAddress.count)
 
@@ -76,7 +76,7 @@ public class GetMacAddressPlugin: NSObject, FlutterPlugin {
 
 
 
-func getMacAddresses() -> String {
+func getMacAddress() -> String {
     var macAddressesString: String = ""
 
     if let intfIterator = FindEthernetInterfaces() {
