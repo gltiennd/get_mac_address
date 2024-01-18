@@ -58,7 +58,7 @@ public class GetMacAddressPlugin: NSObject, FlutterPlugin {
             intfService = IOIteratorNext(intfIterator)
         }
 
-        return "23123"
+        return macAddresses.joined(separator: ";")
     }
 
     func getMacAddresses() -> String? {
